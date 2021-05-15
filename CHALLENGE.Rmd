@@ -333,8 +333,6 @@ Finalmente, antes de hacer el return, se comprueba que no haya repeticiones de I
 ![](./diagramas/captura ivas.PNG)
 </center>
 
-***QUEDA COMPROBAR SI SE PUEDE CON SIMPLIFY, Y SINO, EXPLICAR QUE AQUÍ NO SE HA HECHO***
-
 
 De este modo se extrae el IVA que pone en la factura, y este dato es uno de los argumentos de entrada, junto con la propia factura, para la función que nos dará el IVA aplicado, el IVA en dinero, dinero base e importe final.
 
@@ -1280,4 +1278,4 @@ plt.show()
 
 Aqui está el directorio usado donde se encuentran todos los materiales del challenge para su mejor uso:
 
-[Link](https://ejemplo.com/ "TRABAJO DE PYTHON")
+[Link](https://github.com/AlvaroMuroDunabeitia/CHALLENGE/ "TRABAJO DE PYTHON")
