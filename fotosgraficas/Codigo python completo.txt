@@ -1,0 +1,474 @@
+#Instalamos las librerias
+
+import pandas as pd
+import numpy as np
+from scipy import stats
+import seaborn as sns
+import matplotlib.pyplot as plt
+sns.set(style="whitegrid")
+import regex as re
+import io
+from datetime import datetime
+import tkinter as tk
+from tkinter import filedialog
+
+
+
+
+
+
+
+#### FUNCIONES###
+
+
+#------------------------------------------------Funcion Simplify------------------------------------------------
+
+def simplify(captura):
+    dimension = len(captura) - 1
+    if (dimension < 0):
+        dimension = 0
+        captura = "Na"
+    else:
+        for x in range(dimension):
+            if (captura[x] == captura[x+1]):
+                del(captura[x+1])
+        captura = " | ".join(captura)
+    return captura
+
+   #------------------------------------------------Buscar fecha------------------------------------------------
+
+def fecha(leer_factura):
+    
+    leer_factura2 = re.sub(r'\n', '',leer_factura)
+    leer_factura_upper = leer_factura2.upper()
+    
+    xfecha=re.findall("((?:(?:0?[1-9]|1[0-9]|2[0-9]|3[0-1])(?:\/|-|\s)(?:0?[1-9]|1[0-2])(?:\/|-|\s)(?:201[0-9]|202[0-1]))|(?:(?:0?[1-9]|1[0-9]|2[0-9]|3[0-1])(?:\/|-|\s)(?:DE)?(?:\/|-|\s)?(?:ENE\.?|ENERO|FEB\.?|FEBRERO|MAR\.?|MARZO|ABR\.?|ABRIL|MAYO\.?|MAY|JUNIO\.?|JUN|JULIO\.?|JUL|AGOSTO\.?|AGO|SEPTIEMBRE\.?|SEP|OCTUBRE\.?|OCT|NOVIEMBRE\.?|NOV|DICIEMBRE\?.|DIC)(?:\/|-|\s)?(?:DE)?(?:\/|-|\s)(?:(?:20)?1[0-9]|(?:20)?2[0-1])))",leer_factura_upper)
+        
+    xfecha = simplify(xfecha)
+    xfecha = re.sub(" DE ","/",xfecha)
+    xfecha = re.sub("-","/",xfecha)
+
+    meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"]
+    mesesabreviados = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SET","OCT","NOV","DIC"]
+    mesesabreviados2 = [" ENE. "," FEB. "," MAR. "," ABR. "," MAY. "," JUN. "," JUL. "," AGO. "," SET. "," OCT. "," NOV. "," DIC. "]
+
+    mesesnumero = ["01","02","03","04","05","06","07","08","09","10","11","12"]
+    mesesnumeroconbarra = ["/01/","/02/","/03/","/04/","/05/","/06/","/07/","/08/","/09/","/10/","/11/","/12/"]
+    k = 0
+    for k in [0,1,2,3,4,5,6,7,8,9,10,11]:
+        xfecha = re.sub(meses[k],mesesnumero[k],xfecha)
+        xfecha = re.sub(mesesabreviados2[k],mesesnumeroconbarra[k],xfecha)
+        xfecha = re.sub(mesesabreviados[k],mesesnumero[k],xfecha)
+
+    return xfecha
+
+#------------------------------------------------Buscar nombre de la empresa------------------------------------------------
+
+def nombreempresa(leer_factura):
+
+    xnombreempresa=re.findall("(?:Remite.\s|Remite:\s|Entidad:\s)?([A-Z][a-z]^\s|\n?.+OASIS|[A-Z].*,?\s?(?:S\.L\.|[^a-z-A-Z^\n?]SL|S\.L|C\.B|Inc\.|[^a-z-A-Z^\n]SAU|S\.A\.U\.|S\.A\.U|S\.A\.|[^a-z-A-Z^\.^\n?]SA(?=\n)|S\.A))",leer_factura)
+
+    xnombreempresa = simplify(xnombreempresa)
+    return xnombreempresa
+
+#------------------------------------------------Buscar numero de factura------------------------------------------------
+
+def numerofactura(leer_factura):
+
+    xnumerofactura=re.findall("((?:(?<=Comp. Nro: ).*)|(?:(?<=Factura: ).*)|(?:(?<=SU PEDIDO\n)[^A-Z].*)|(?:(?<=N° FACTURA: F\/).*)|(?:(?<=EXPEDIENTE N°).*)|(?:(?<=Numero: ).*)|(?:(?<=N° de factura\n).*)|(?:(?<=N° DE FACTURA\n).*)|(?:(?<=Número de factura ).*)|(?:(?<=N° FACTURA : ).*)|(?:(?<=Póliza: ).*)|(?:(?<=Código\n).*)|(?:(?<=N° fra.simp: ).*)|(?:(?<=NÚMERO\n).*)|(?:(?<=FACTURA SIMPLIFICADA #).*)|(?:(?<=01\/03\/16\n).*)|(?:(?<=Número de póliza del contrato de acceso ).*))",leer_factura)
+    xnumerofactura = simplify(xnumerofactura)
+    return xnumerofactura
+#------------------------------------------------Buscar NIF/CIF------------------------------------------------
+
+def nif(leer_factura):
+
+    xnif=re.findall("\s(?:ES)?(\d{8}[\s-]?[A-Z]|\d{10}[\s-]?[A-Z]|[A-Z][\s-]?\d{8}|[A-Z][\s-]?\d{10})\s",leer_factura)
+    xnif = simplify(xnif)
+    return xnif 
+
+    #------------------------------------------------Buscar IVA------------------------------------------------
+
+def iva1(leer_factura):
+    xiva=re.findall("((?:\n|\s|\()(?:(?:(?=\n)?21\,00?)|(?:(?=\n)?21\.00?)|(?:(?:\n)?21[^\d+](?:\s|\n)?))|(?:\n|\s\()(?:(?:(?=\n)?(?:10|19)\,00?)|(?:(?=\n)?10\.00?)|(?:(?=\n)?10[^\d+](?=\s)))|(?:\n|\s\()(?:(?:(?=\n)?16\,00?)|(?:(?=\n)?16\.00?)|(?:(?=\n)?16[^\d+](?=\s)))|(?:\n|\s)(?:(?:(?=\n)?10\,50?)|(?:(?=\n)?10\.50?)))",leer_factura)
+    
+    for h in range(len(xiva)):
+        xiva[h] = re.sub(r"\n","",xiva[h])
+        xiva[h] = re.sub(r"%","",xiva[h])
+        xiva[h] = re.sub(r"\,0$","",xiva[h])
+        xiva[h] = re.sub(r"\,00$","",xiva[h])
+        xiva[h] = re.sub(r"\.0$","",xiva[h])
+        xiva[h] = re.sub(r"\.00$","",xiva[h])
+        xiva[h] = re.sub(" ","",xiva[h])
+        xiva[h] = re.sub(r"\(","",xiva[h])
+        xiva[h] = re.sub(r"\.$","",xiva[h])
+    xiva2 = []
+    for g in xiva:
+        if g not in xiva2:
+            xiva2.append(g)
+    if (len(xiva2) == 0):
+        xiva2 = "0"
+    return xiva2 
+
+
+    #------------------------------------------------Buscar Importe base, total e iva real------------------------------------------------
+
+def importeiva(leer_factura,xiva):
+
+    todoslosnumeros=re.findall("((?<!-)(?<!€\n)(?<=:\n)?[1234]?\d?\.?\d?\d+,\d{2}|(?<!-)(?<!€\n)(?<=:\n)?[1234]?\d?,?\d?\d{2}\.\d{2})",leer_factura)               #Capturamos todos los numeros
+
+    xdinerobase = []
+    xdinerototal = []
+    xivareal = []
+    xivadinero = []
+
+    for h in range(len(todoslosnumeros)):
+        todoslosnumeros[h] = re.sub("^0.00","0.01",todoslosnumeros[h])
+        
+        a = re.findall("(\d+\.\d{2}$)",todoslosnumeros[h])
+        b = re.findall("(\d+\,\d+\.\d{2})",todoslosnumeros[h])
+        
+        if (len(a) > 0 ):
+            for x in range(len(a)):
+                a[x] = re.sub("\.",",",a[x])
+            todoslosnumeros[h] = a[0]
+        if (len(b) > 0 ):
+            for x in range(len(b)):
+                b[x] = re.sub("\,","",b[x])
+                b[x] = re.sub("\.",",",b[x])
+            todoslosnumeros[h] = b[0]    
+                    
+                #Ahora todos los numeros están de la misma manera, el "." como millares y las "," como decimales
+                #Para poder pasar cada uno a float, tenemos que eliminar los "." de los millares y las comas transformarlas a "."
+
+    for h in range(len(todoslosnumeros)):
+        todoslosnumeros[h] = re.sub("\.","",todoslosnumeros[h])
+        todoslosnumeros[h] = re.sub("\,",".",todoslosnumeros[h])
+
+
+    todoslosnumerosfloat =[float(x) for x in todoslosnumeros]      #Pasamos a float
+    todoslosivasfloat = [float(y) for y in xiva]                   #Pasamos a float
+
+    
+    for m in range(len(todoslosnumerosfloat)):
+        for j in range(len(todoslosnumerosfloat)):
+             for k in range(len(todoslosivasfloat)):
+                base = todoslosnumerosfloat[j]                                                          #Valor importe base posible
+                c = todoslosivasfloat[k]                                                             #Valor IVA posible
+                tot = todoslosnumerosfloat[m]
+                a = base*(1+(c/100))                                                  #Formula para calcular el importe total
+                if (0.97 < (a/tot) and (a/tot) < 1.03):            #Calculamos error entre valor real y valor del txt y                                                                                              aceptamos si esmuy pequeña la diferencia de decimales
+
+                    xdinerobase = todoslosnumerosfloat[j]             #valor del importe total correspondiente
+                    xdinerototal = todoslosnumerosfloat[m]            #valor del importe base correspondiente
+                    xivareal = todoslosivasfloat[k]                   #valor del iva correspondiente
+                    xivadinero = xdinerototal - xdinerobase           #valor del iva en cantidad de euros
+
+                    datos = [xdinerobase,xivareal,xivadinero,xdinerototal]
+    return datos
+                                
+#------------------------------------------------Correo------------------------------------------------
+
+def correo(leer_factura):
+        
+    xcorreo=re.findall("(\w+\.?\w+?@\w+\.?\w+?\.(?:com|es))",leer_factura)
+    xcorreo = simplify(xcorreo)
+    return xcorreo
+
+#------------------------------------------------Telefono------------------------------------------------
+
+def telefono(leer_factura):
+
+    xtelefono=re.findall("(\d{2,3}\s\d{3}\s\d{2,3}(?:\s?\d{2}?)?)",leer_factura)
+    xtelefono = simplify(xtelefono)
+    return xtelefono
+
+#------------------------------------------------Dirección------------------------------------------------
+
+def direccion(leer_factura):
+    xdireccion = re.findall("((?:Ctra|C[R\/] |Carretera|Vía|Pasi|VÍA|AV\.|AVDA\.?|P[il]za|PLA?ZA|Joan|\d{5,8} [A-Za-z][^Caducidad])(?:.+)(?:(?=CIF))?(?=\n))",leer_factura)
+
+    for h in range(len(xdireccion)):
+        xdireccion[h] = re.sub("CIF.+","",xdireccion[h])
+    xdireccion = simplify(xdireccion)
+    return xdireccion
+ 
+ #------------------------------------------------Nombre factura------------------------------------------------
+    
+def nfactura(nombrefactura):
+    nombrefactura = re.sub(".txt","",nombrefactura)
+    return nombrefactura
+
+###=========================================GENERAR DATAFRAME===========================================================###
+
+def busquedafactura(nombrefactura,leer_factura,i):   
+
+    now = datetime.now()
+    xfecha = fecha(leer_factura)
+    xnombreempresa = nombreempresa(leer_factura)
+    xnif = nif(leer_factura)
+    xiva = iva1(leer_factura)
+    datos = importeiva(leer_factura,xiva)
+    xcorreo = correo(leer_factura)
+    xtelefono = telefono(leer_factura)
+    xdireccion = direccion(leer_factura)
+    nombrefactura = nfactura(nombrefactura)
+    xnumerofactura = numerofactura(leer_factura)
+
+    xdinerobase = datos[0]
+    xivareal = datos[1] 
+    xivadinero = datos[2] 
+    xdinerototal = datos[3] 
+
+    #------------------------------------------------registro------------------------------------------------
+    registro = [now.year, now.month, now.day, "-", i+1]
+    registro = "".join(map(str,registro))
+    #------------------------------------------------fecha registro------------------------------------------------
+    fecharegistro = now.date()
+
+
+    lista = [nombrefactura,xnumerofactura,registro,fecharegistro,xnombreempresa,xnif,xfecha,xdireccion,xcorreo,xtelefono,xdinerobase,xivareal,xivadinero,xdinerototal]      
+    return lista            #Guardar todos los datos de una factura en una lista y la exportamos para formar el dataframe
+
+    
+
+
+
+
+
+
+
+
+#Apuntamos nombres facturas en una lista
+
+facturas = ["5ffe46bfc08b4.txt","12OCR (1).txt","codigoqr.txt","factura-luz.txt","IVALINEAS1 (1).txt",
+            "IVALINEAS2 (1).txt","IVALINEAS3 (1).txt","IVANORMAL2 (1).txt","IVANORMAL3 (1).txt","modelo-factura-es-clasico-blanco-750px.txt",
+            "modelo-factura-es-puro-750px.txt","prueba 1_1.txt","prueba 1_2.txt","prueba 1_3.txt","prueba 1_4.txt",
+            "prueba 1_5.txt","prueba 1_6.txt","prueba 1_9.txt","prueba 1_10.txt","prueba 1_11.txt","ticket.txt"]
+
+filepath = "./facturas/"                                              #Guardamos el directorio de donde se encuentran
+
+df = pd.DataFrame(columns = ['Nombre factura','Numero factura','Registro','Fecha Registro','Nombre empresa','NIF_CIF','Fecha','Dirección','Correo','Telefono','Importe base','IVA','IVA cantidad','Importe total'])                                #Generamos el dataframe vacio con estas variables
+
+i = 0
+for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]:      #Elegimos factura que queramos pero se hará un bucle para generar el dataframe
+
+    nombrefactura = facturas[i]                                       #Guardamos el nombre que nos interesa en nombrefacturas
+    factura = io.open(filepath+nombrefactura,"r", encoding='utf-8')   #Abrimos el .txt correspondiente a nombrefactura en formato ascii       
+    leer_factura = factura.read()                                     #Guardamos el .txt leido en leer_factura, input principal de las funciones de regular expression
+    lista = busquedafactura(nombrefactura,leer_factura,i)                #Función de la lista para cada factura
+    df.loc[i] = lista                                         #cada lista con todos los datos los paso a la lista creada del dataframe
+    factura.close()                                                   #Cerramos el archivo .txt inicial por si modificamos datos sin querer
+
+df                                                            #Visualizamos el dataframe 
+
+
+
+
+
+
+
+
+#----------------------------------BOTON PARA EXPORTAR-------------------------------#
+
+root= tk.Tk()
+
+canvas1 = tk.Canvas(root, width = 300, height = 300, bg = 'lightsteelblue2', relief = 'raised')
+canvas1.pack()
+
+def exportar ():
+    global df
+    exportar = filedialog.asksaveasfilename(defaultextension='.xlsx')
+    df.to_excel (exportar, index = False, header=True, encoding = "utf-8")
+
+def exportarauto ():
+    global df
+    df.to_excel ("dataframe.xlsx", index = False, header=True, encoding = "utf-8")
+
+guardarcomo1 = tk.Button(text='Exportar manual', command=exportar, bg='black', fg='white', font=('helvetica', 12, 'bold'))
+guardarcomo2 = tk.Button(text='Exportar automático', command=exportarauto, bg='black', fg='white', font=('helvetica', 12, 'bold'))
+canvas1.create_window(150, 100, window=guardarcomo1)
+canvas1.create_window(150, 200, window=guardarcomo2)
+
+root.mainloop()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Creación de gráficos
+
+#Cuenta facturas por IVA
+sns.displot(df['IVA'])
+
+
+
+
+
+
+
+#Pie Chart IVA. Representación en quesito de lo mismo que la anterior
+Grouped=pd.DataFrame()
+Grouped["Cuenta"]=df['IVA'].value_counts()
+Grouped
+
+
+labels = ['21%', '19%', '16%', '10%']
+sizes = Grouped['Cuenta']
+colors = ['yellowgreen', 'gold', 'lightskyblue', 'lightcoral']
+patches, texts = plt.pie(sizes, colors=colors, shadow=True, startangle=90)
+plt.legend(patches, labels, loc="best")
+plt.axis('equal')
+plt.tight_layout()
+plt.show()
+
+
+
+
+
+
+#Grafica con todos los importes totales donde en el eje X se refpresenta el indice de cada factura en el dataframe y en el eje y su correspondiente importe total.
+sns.catplot(x=df.index, y="Importe total", data=df)
+
+
+
+
+
+
+
+#En este gráfico se representan las facturas de las cuales se han extraido direccion la las que no.
+a =  0
+b = 0
+for i in range(len(df.Dirección)):
+    if (df.Dirección[i] == "Na"):
+        a = a + 1
+    else:
+        b = b +  1
+lista = [a,b]
+objects = ('NO', 'SI')
+y_pos = np.arange(len(objects))
+performance = [a,b]
+
+plt.bar(y_pos, performance, align='center', alpha=0.5)
+plt.xticks(y_pos, objects)
+plt.ylabel('Cantidad de facturas')
+plt.title('Facturas que contienen direccion')
+
+plt.show()
+
+
+
+
+
+
+
+
+
+#En este gráfico se representan las facturas de las cuales se han extraido fecha y las que no.
+a =  0
+b = 0
+for i in range(len(df.Fecha)):
+    if (df.Fecha[i] == "Na"):
+        a = a + 1
+    else:
+        b = b +  1
+lista = [a,b]
+objects = ('NO', 'SI')
+y_pos = np.arange(len(objects))
+performance = [a,b]
+
+plt.bar(y_pos, performance, align='center', alpha=0.5)
+plt.xticks(y_pos, objects)
+plt.ylabel('Cantidad de facturas')
+plt.title('Facturas que contienen fecha')
+
+plt.show()
+
+
+
+
+
+
+
+
+
+
+#En este gráfico se representan las facturas de las cuales se han extraido correo y las que no.
+a =  0
+b = 0
+for i in range(len(df.Correo)):
+    if (df.Correo[i] == "Na"):
+        a = a + 1
+    else:
+        b = b +  1
+lista = [a,b]
+objects = ('NO', 'SI')
+y_pos = np.arange(len(objects))
+performance = [a,b]
+
+plt.bar(y_pos, performance, align='center', alpha=0.5)
+plt.xticks(y_pos, objects)
+plt.ylabel('Cantidad de facturas')
+plt.title('Facturas que contienen correo')
+
+plt.show()
+
+
+
+
+
+
+
+
+#En este gráfico se representan las facturas de las cuales se han extraido teléfonos y las que no.
+a =  0
+b = 0
+for i in range(len(df.Telefono)):
+    if (df.Telefono[i] == "Na"):
+        a = a + 1
+    else:
+        b = b +  1
+lista = [a,b]
+objects = ('NO', 'SI')
+y_pos = np.arange(len(objects))
+performance = [a,b]
+
+plt.bar(y_pos, performance, align='center', alpha=0.5)
+plt.xticks(y_pos, objects)
+plt.ylabel('Cantidad de facturas')
+plt.title('Facturas que contienen telefonos')
+
+plt.show()
+
+
+
+
+
+
+#En este gráfico se representan las facturas de las cuales se han extraido nif cif y las que no.
+a =  0
+b = 0
+for i in range(len(df.NIF_CIF)):
+    if (df.NIF_CIF[i] == "Na"):
+        a = a + 1
+    else:
+        b = b +  1
+lista = [a,b]
+objects = ('NO', 'SI')
+y_pos = np.arange(len(objects))
+performance = [a,b]
+
+plt.bar(y_pos, performance, align='center', alpha=0.5)
+plt.xticks(y_pos, objects)
+plt.ylabel('Cantidad de facturas')
+plt.title('Facturas que contienen nif y cif')
+
+plt.show()

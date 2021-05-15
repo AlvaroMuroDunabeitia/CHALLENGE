@@ -1,0 +1,315 @@
+---
+title: "Challenge - Text Mining con Facturas"
+author: "Javier Condón, Alvaro Muro y Rubén San José"
+date: "14/05/2021"
+output: rmdformats::material
+---
+
+```{r setup, include=FALSE}
+library(reticulate)  
+knitr::opts_chunk$set(echo = TRUE)
+#use_condaenv("Python 3_8")
+
+```
+
+# 0. Introducción
+
+<center>
+![](https://learn.eduopen.org/pluginfile.php/88113/course/overviewfiles/text-mining.jpg)
+</center>
+
+El "text mining", también llamado Minería de Textos, es el análisis de datos no estructurados contenidos en un texto en un lenguaje nautral utilizando varios métodos, herramientas y técnicas.Cabe destacar que la exploración de los textos se hace de manera automática o semiautomática, buscando patrones repetitivos, tendencias, etc, que explican el comportamiento del text. Es un proceso que todo Data Scientist debe conocer por todas sus amplias aplicaciones, como por ejemplo el mundo empresarial o el mundo de investigación médica.
+
+En este trabajo se tratará de identificar y clasificar los distintos elementos de facturas, exportar un archivo en excel con toda la informacion y realizar diferentes gráficas que muestren un resumen de las facturas.
+
+# 1. Materiales y métodos
+
+Instalamos las librerias que vamos a utilizar a lo largo del trabajo y las importamos.
+
+```{r install, echo=TRUE, message=FALSE, warning=FALSE}
+
+#py_install("pandas")
+#py_install("numpy")
+#py_install("scipy")
+#py_install("seaborn")
+#py_install("regex")
+#py_install("io")
+#py_install("datetime")
+#py_install("matplotlib")
+#py_install("locale")
+
+```
+
+```{python librerias}
+import pandas as pd
+import numpy as np
+from scipy import stats
+import seaborn as sns
+sns.set(style="whitegrid")
+import regex as re
+import io
+from datetime import datetime
+import matplotlib.pyplot as plt
+import locale
+
+```
+
+## 1.1. Cargar Datos
+
+Se nos proporcionaba un archivo llamado _*dict_wB.json*_ donde se encontraban todas las facturas comprimidas. Mediante la libreria __"json"__ abríamos ese archivo como un diccionario, donde las "keys" son los titulos de cada factura y los "values"  son el contenido de cada factura. Decidimos exportar la información de cada factura dividiendola en 21 archivos txt para el mejor manejo de cada una de ellas
+El código para exportar dichos txt fue el siguiente:
+
+```{python}
+
+#Aqui ira el codigo para exportar los txt
+
+```
+
+Una vez hecho esto ya comenzamos la búsqueda de patrones de cada txt, el __*"text mining"*__.
+
+# 2. Text mining {.tabset .tabset-fade .tabset-pills}
+
+En este apartado se explicarán cada una de las capturas realizadas para la realización del dataframe. Las capturas que hemos realizado son: el número de factura, el nombre de la empresa, el código NIF o CIF, las fechas encontradas en cada factura, las dirrecciones de cada factura, el correo, el teléfono y finalmente se capturó al mismo tiempo el importe total, el importe base y el IVA correspondiente.
+
+Para realizar dichas capturas, se han hecho distintas funciones, como se verá a continuación. Sin embargo, la más utilizada de todas, ha sido la simplify, que es una función genérica que se ha desarrollado, para que cuando una función realice dos capturas iguales, solo se quede con una.
+
+
+```{python funcion simplify }
+
+#--------------Funcion Simplify----------------
+
+def simplify(captura):
+    dimension = len(captura) - 1
+    if (dimension < 0):
+        dimension = 0
+        captura = "Na"
+    else:
+        for x in range(dimension):
+            if (captura[x] == captura[x+1]):
+                del(captura[x+1])
+        captura = " | ".join(captura)
+    return captura
+
+```
+
+## 2.1. Nº Factura
+
+Con esta función se adquieren los distintos números de factura.
+
+```{python num factura, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Aqui ira el codigo para exportar los txt
+
+```
+
+Explicación del código:
+
+## 2.2. Empresa
+
+Función correspondiente a la captura del nombre de la Empresa.
+
+```{python empresa, eval=FALSE, message=FALSE, warning=FALSE, include=TRUE}
+
+def nombreempresa(leer_factura):
+
+    xnombreempresa=re.findall("(?:Remite.\s|Remite:\s|Entidad:\s)?([A-Z][a-z]^\s|\n?.+OASIS|[A-Z].*,?\s?(?:S\.L\.|[^a-z-A-Z^\n?]SL|S\.L|C\.B|Inc\.|[^a-z-A-Z^\n]SAU|S\.A\.U\.|S\.A\.U|S\.A\.|[^a-z-A-Z^\.^\n?]SA(?=\n)|S\.A))",leer_factura)
+
+    xnombreempresa = simplify(xnombreempresa)
+    return xnombreempresa
+
+```
+
+Como se obserba, el código se basa en capturar los distintos nombres con una regular expression (REGEX de ahora en adelante), y posteriormente se les aplica a las capturas la previamente explcada función simplify, para evitar repeticiones.
+
+## 2.3. NIF/CIF
+
+Función correspondiente a la captura del NIF o el CIF de la Empresa.
+
+```{python nif, eval=FALSE, message=FALSE, warning=FALSE, include=TRUE}
+
+def nif(leer_factura):
+
+    xnif=re.findall("\s(?:ES)?(\d{8}[\s-]?[A-Z]|\d{10}[\s-]?[A-Z]|[A-Z][\s-]?\d{8}|[A-Z][\s-]?\d{10})\s",leer_factura)
+    xnif = simplify(xnif)
+    return xnif 
+
+```
+Este código es exactamente igual que el anterior, salvo la REGEX, que en esta ocasión se ha adaptado para capturar los distintos NIFs\\CIFs que hyabía en las facturas.
+
+## 2.4. Fecha
+
+Para capturar las fechas de las distintas facturas, se programó la siguiente función:
+
+```{python fecha, eval=FALSE, message=FALSE, warning=FALSE, include=TRUE}
+
+def fecha(leer_factura):
+    
+    leer_factura2 = re.sub(r'\n', '',leer_factura)
+    leer_factura_upper = leer_factura2.upper()
+    
+    xfecha=re.findall("((?:(?:0?[1-9]|1[0-9]|2[0-9]|3[0-1])(?:\/|-|\s)(?:0?[1-9]|1[0-2])(?:\/|-|\s)(?:201[0-9]|202[0-1]))|(?:(?:0?[1-9]|1[0-9]|2[0-9]|3[0-1])(?:\/|-|\s)(?:DE)?(?:\/|-|\s)?(?:ENE\.?|ENERO|FEB\.?|FEBRERO|MAR\.?|MARZO|ABR\.?|ABRIL|MAYO\.?|MAY|JUNIO\.?|JUN|JULIO\.?|JUL|AGOSTO\.?|AGO|SEPTIEMBRE\.?|SEP|OCTUBRE\.?|OCT|NOVIEMBRE\.?|NOV|DICIEMBRE\?.|DIC)(?:\/|-|\s)?(?:DE)?(?:\/|-|\s)(?:(?:20)?1[0-9]|(?:20)?2[0-1])))",leer_factura_upper)
+        
+    xfecha = simplify(xfecha)
+    xfecha = re.sub(" DE ","/",xfecha)
+    xfecha = re.sub("-","/",xfecha)
+
+    meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"]
+    mesesabreviados = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SET","OCT","NOV","DIC"]
+    mesesabreviados2 = [" ENE. "," FEB. "," MAR. "," ABR. "," MAY. "," JUN. "," JUL. "," AGO. "," SET. "," OCT. "," NOV. "," DIC. "]
+
+    mesesnumero = ["01","02","03","04","05","06","07","08","09","10","11","12"]
+    mesesnumeroconbarra = ["/01/","/02/","/03/","/04/","/05/","/06/","/07/","/08/","/09/","/10/","/11/","/12/"]
+    k = 0
+    for k in [0,1,2,3,4,5,6,7,8,9,10,11]:
+        xfecha = re.sub(meses[k],mesesnumero[k],xfecha)
+        xfecha = re.sub(mesesabreviados2[k],mesesnumeroconbarra[k],xfecha)
+        xfecha = re.sub(mesesabreviados[k],mesesnumero[k],xfecha)
+
+    return xfecha
+```
+
+Explicación del código: Este código resulta algo más tedioso, ya que se tuvieron que realizar una serie de cambios. Para poder aplicar una REGEX que leyera con precisión todas las fechas, hubo que poner el archivo .txt que se había generado en una sola línea, con la ayuda de re.sub, y se pusieron todas las letras en mayúscula.Además, por ese mismo motivo también se sustituyeron las barras diagonales por guiones. Tras aplicar la REGEX y leer las fechas, al igual que en las funciones anteriores se aplica la función simplify.
+Posteriormente, para que quede más estético, se dejan las fechas en un mismo formato. Para ello se sustituyen los "DE" y guiones por barras diagonales, y finalmente gracias a un bucle, se sustituyen los distintos formatos que había para escribir la fecha, por uno solo, de la forma 1/01/2020.
+
+## 2.5. Dirección
+
+A fin de capturar la dirección de la empresa, se creó la suguiente función:
+
+```{python direccion, eval=FALSE, message=FALSE, warning=FALSE, include=TRUE}
+
+def direccion(leer_factura):
+        xdireccion=re.findall("((?:Ctra|C[R\/] |Carretera|Vía|Pasi|VÍA|AV\.|AVDA\.?|P[il]za|PLA?ZA|Joan|\d{5,8} [A-Za-z][^Caducidad])(?:.+)(?:(?=CIF))?(?=\n))",leer_factura)
+
+    for h in range(len(xdireccion)):
+        xdireccion[h] = re.sub("CIF.+","",xdireccion[h])
+    xdireccion = simplify(xdireccion)
+    return xdireccion
+```
+
+El código que se presenta a continuación se parece mucho a los que se han presentado al principio, como NIF\\CIF, y nombre empresa. La idea es la misma, cambiando la REGEX, salvo que en esta ocasión, al guardar las direcciones antes de realizar el simplify, eliminamos los CIFs ya que la REGEX no era precisa del todo. Al realizar esto gracias al re.sub, ya no había ningún problema, y se consiguen guardar con éxito las distintas direcciones.
+
+## 2.6. Correo
+
+Función correspondiente a la captura del correo de la Empresa.
+
+```{python correo, eval=FALSE, message=FALSE, warning=FALSE, include=TRUE}
+
+def correo(leer_factura):
+        
+    xcorreo=re.findall("(\w+\.?\w+?@\w+\.?\w+?\.(?:com|es))",leer_factura)
+    xcorreo = simplify(xcorreo)
+    return xcorreo
+
+```
+
+La captura del corre es otra función simple, basada en una REGEX, y la posterior llamada a la función simplify.
+
+## 2.7. Telefono
+
+La función desarrollada para la captura de los teléfonos, ha sido la siguiente:
+
+```{python telefono, eval=FALSE, message=FALSE, warning=FALSE, include=TRUE}
+
+def telefono(leer_factura):
+
+    xtelefono=re.findall("(\d{2,3}\s\d{3}\s\d{2,3}(?:\s?\d{2}?)?)",leer_factura)
+    xtelefono = simplify(xtelefono)
+    return xtelefono
+
+```
+
+Al igual que en el caso anterior, es solamente la idea en la que se basan todas las funciones aquí programadas: REGEX,  y función simplify para evitar capturas duplicadas.
+
+## 2.8. Importes & IVA
+
+Esto realmente son dos funciones. La primera de todas sirve para capturar los ivas que pone en las facturas, y la segunda nos proporcionará el dinero base, el IVA real que se le aplica a la factura, ya que no siempre es el mismo que se captura, el dinero que supone el IVA, y el importe total. A continuación se explican paso a paso:
+
+```{python IVA, echo=TRUE, message=FALSE, warning=FALSE}
+
+def iva1(leer_factura):
+    xiva=re.findall("((?:\n|\s|\()(?:(?:(?=\n)?21\,00?)|(?:(?=\n)?21\.00?)|(?:(?:\n)?21[^\d+](?:\s|\n)?))|(?:\n|\s\()(?:(?:(?=\n)?(?:10|19)\,00?)|(?:(?=\n)?10\.00?)|(?:(?=\n)?10[^\d+](?=\s)))|(?:\n|\s\()(?:(?:(?=\n)?16\,00?)|(?:(?=\n)?16\.00?)|(?:(?=\n)?16[^\d+](?=\s)))|(?:\n|\s)(?:(?:(?=\n)?10\,50?)|(?:(?=\n)?10\.50?)))",leer_factura)
+    
+    for h in range(len(xiva)):
+        xiva[h] = re.sub(r"\n","",xiva[h])
+        xiva[h] = re.sub(r"%","",xiva[h])
+        xiva[h] = re.sub(r"\,0$","",xiva[h])
+        xiva[h] = re.sub(r"\,00$","",xiva[h])
+        xiva[h] = re.sub(r"\.0$","",xiva[h])
+        xiva[h] = re.sub(r"\.00$","",xiva[h])
+        xiva[h] = re.sub(" ","",xiva[h])
+        xiva[h] = re.sub(r"\(","",xiva[h])
+        xiva[h] = re.sub(r"\.$","",xiva[h])
+    xiva2 = []
+    for g in xiva:
+        if g not in xiva2:
+            xiva2.append(g)
+    if (len(xiva2) == 0):
+        xiva2 = "0"
+    return xiva2 
+
+
+```
+La función se basa en la misma estructura de siempre, pero en esta ocasión se realizan una serie de cambios, para obtener el mismo formato, como quitar los espacios, porcentajes, 0s...
+
+De este modo se extrae el IVA que pone en la factura, y este dato es uno de los argumentos de entrada, junto con la propia factura, para la función que nos dará el IVA aplicado, el IVA en dinero, dinero base e importe final.
+
+
+```{python IVA e importe, echo=TRUE, message=FALSE, warning=FALSE}
+
+
+
+```
+
+# 3. Formación del DataFrame y el Excel
+
+## 3.1. Obtención del resto de datos {.tabset .tabset-fade .tabset-pills}
+
+El resto de resultados necesarios para formar el DataFrame son: el nombre de la factura, la fecha de registro y el número de registro. La obtención de estos datos se hizo de la siguiente manera.
++++
+### 3.1.1. Nombre de Factura
+
+```{python, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Aqui ira el codigo para exportar los txt
+
+```
+
+### 3.1.2. Fecha y número de registro
+
+```{python, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Aqui ira el codigo para exportar los txt
+
+```
+
+## 3.2. Formación del DataFrame
+
+```{python, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Aqui ira el codigo para exportar los txt
+
+```
+
+## 3.3. Exportación a Excel
+
+```{python, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Aqui ira el codigo para exportar los txt
+
+```
+
+# 4. Gráficas
+
+```{python, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Aqui ira el codigo para exportar los txt
+
+```
+
+# 5. Código completo
+
+```{python, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Aqui ira el codigo para exportar los txt
+
+```
